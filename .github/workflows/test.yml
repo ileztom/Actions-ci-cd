@@ -32,19 +32,22 @@ jobs:
           
       - name: Install ChromeDriver
         run: |
-          # Получаем полную версию Chrome (например 115.0.5790.110)
-          CHROME_FULL_VERSION=$(google-chrome-stable --version | awk '{print $3}')
-          # Получаем major version (первые три числа: 115.0.5790)
-          CHROME_DRIVER_VERSION="${CHROME_FULL_VERSION%.*}"
-          echo "Installing ChromeDriver version matching Chrome $CHROME_DRIVER_VERSION"
-        
-          # Скачиваем ChromeDriver
-          wget -q "https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip"
-          unzip chromedriver_linux64.zip
-          sudo mv chromedriver /usr/local/bin/chromedriver
+          # Для версий Chrome 115 и выше используем новый endpoint
+          if [[ $(echo $CHROME_VERSION | cut -d'.' -f1) -ge 115 ]]; then
+            CHROMEDRIVER_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r '.channels.Stable.version')
+            wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+            unzip chromedriver-linux64.zip
+            sudo mv chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver /usr/local/bin/chromedriver
+          else
+            # Для старых версий (до 115) используем старый endpoint
+            CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)
+            CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
+            wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+            unzip chromedriver_linux64.zip
+            sudo mv chromedriver /usr/local/bin/chromedriver
+          fi
           sudo chmod +x /usr/local/bin/chromedriver
-          rm chromedriver_linux64.zip
-          
+            
       - name: Verify installations
         run: |
           google-chrome-stable --version
