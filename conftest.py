@@ -17,27 +17,28 @@ def browser():
 
 @pytest.fixture(scope="function")
 def driver(request):
-    # Настройка логгера для теста
+    # Настройка логгера
     logger = logging.getLogger(request.node.name)
     logger.setLevel(logging.INFO)
-
-    # Создаем драйвер
-    driver = webdriver.Chrome()
-    driver.maximize_window()
-
+    
+    # Конфигурация ChromeOptions
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    
+    # Уникальный user-data-dir для каждого теста
+    user_data_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+    
+    # Инициализация драйвера
+    driver = webdriver.Chrome(options=options)
     logger.info("Браузер запущен")
+    
     yield driver
-
-    # Если тест упал, делаем скриншот
-    if request.node.rep_call.failed:
-        screenshot = driver.get_screenshot_as_png()
-        allure.attach(
-            screenshot,
-            name=f"{request.node.name}_failure",
-            attachment_type=allure.attachment_type.PNG
-        )
-        logger.error(f"Тест упал: {request.node.name}")
-
+    
+    # Завершение
     driver.quit()
     logger.info("Браузер закрыт")
 
