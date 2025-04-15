@@ -13,28 +13,38 @@ jobs:
         with:
           python-version: "3.10"
           
-      - name: Install Chrome and ChromeDriver (WORKING)
+      - name: Install Google Chrome
         run: |
-          sudo apt-get remove -y google-chrome-stable chromium-browser 2>/dev/null || true
-          sudo rm -f /usr/bin/google-chrome /usr/bin/chromedriver
-          
           sudo apt-get update
-          sudo apt-get install -y wget unzip libxss1 fonts-liberation
+          sudo apt-get install -y wget
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+        
+      - name: Get installed Chrome version
+        id: chrome-version
+        run: |
+          CHROME_VERSION=$(google-chrome-stable --version | awk '{print $3}')
+          echo "Chrome version: $CHROME_VERSION"
+          echo "CHROME_VERSION=${CHROME_VERSION}" >> $GITHUB_ENV
+          echo "CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)" >> $GITHUB_ENV
           
-          wget -N https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get install -yf
-          rm google-chrome-stable_current_amd64.deb
-          
-          CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
-          CHROME_MAJOR=${CHROME_VERSION%%.*}
-          DRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR")
-          wget -N "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
-          sudo unzip -o chromedriver_linux64.zip -d /usr/local/bin/
+      - name: Install ChromeDriver
+        run: |
+          CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)
+          CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
+          echo "Installing ChromeDriver version $CHROMEDRIVER_VERSION"
+          wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+          unzip chromedriver_linux64.zip
+          sudo mv chromedriver /usr/local/bin/chromedriver
           sudo chmod +x /usr/local/bin/chromedriver
           rm chromedriver_linux64.zip
           
-          echo "Chrome $(google-chrome --version)"
-          echo "ChromeDriver $(chromedriver --version)"
+      - name: Verify installations
+        run: |
+          google-chrome-stable --version
+          chromedriver --version
           
       - name: Install Python dependencies
         run: |
