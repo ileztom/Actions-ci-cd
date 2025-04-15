@@ -1,6 +1,7 @@
 allure-pytest==2.13.2
 pytest==7.4.0
 pytest-cov==4.1.0
+pytest-allure-adaptor>=2.0.0
 bandit==1.7.5
 safety==2.3.5
 selenium==4.10.0
