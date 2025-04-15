@@ -3,6 +3,7 @@ import pytest
 import logging
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 
 @pytest.fixture
 def browser():
@@ -11,9 +12,18 @@ def browser():
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
-    yield driver
-    driver.quit()
 
+@pytest.fixture
+def driver():
+    # Настройка ChromeOptions
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # без графического интерфейса
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    # Инициализация драйвера
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.maximize_window()
 
 @pytest.fixture(scope="function")
 def driver(request):
