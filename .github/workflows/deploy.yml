@@ -21,3 +21,14 @@ jobs:
           git config --global user.email "actions@github.com"
           git tag ${{ env.NEW_TAG }}
           git push origin ${{ env.NEW_TAG }}
+
+      - name: Update version
+        id: update-version
+        run: |
+          cd .github/scripts/
+          NEW_VERSION=$(python version_manager.py patch)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Build Docker image
+        run: |
+          docker build -t your-image:${{ steps.update-version.outputs.new_version }} .
