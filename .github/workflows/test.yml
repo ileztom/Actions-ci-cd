@@ -13,11 +13,29 @@ jobs:
         with:
           python-version: "3.10"
           
-      - name: Install system dependencies
+      - name: Install Chrome and ChromeDriver
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
-          sudo ln -s /usr/bin/chromium-browser /usr/bin/google-chrome
+          sudo rm -f /usr/bin/google-chrome
+          sudo rm -f /usr/bin/chromedriver
+          
+          sudo apt-get install -y wget
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          CHROME_VERSION=$(google-chrome-stable --version | awk '{print $3}')
+          CHROME_MAJOR_VERSION=${CHROME_VERSION%.*.*}
+          wget -q https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_MAJOR_VERSION} -O chromedriver-version.txt
+          CHROME_DRIVER_VERSION=$(cat chromedriver-version.txt)
+          wget -q https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSION}/chromedriver_linux64.zip
+          sudo unzip -o chromedriver_linux64.zip -d /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+          rm chromedriver_linux64.zip chromedriver-version.txt
+          
+          google-chrome-stable --version
+          chromedriver --version
           
       - name: Install Python dependencies
         run: |
@@ -26,7 +44,6 @@ jobs:
           
       - name: Run tests
         run: |
-          export PATH=$PATH:/usr/bin/chromium-browser
           pytest tests/ --cov=src/ --alluredir=allure-results
           
       - name: Upload test results
