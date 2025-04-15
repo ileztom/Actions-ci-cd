@@ -60,7 +60,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install -r requirements.txt
-          pip install selenium webdriver-manager pytest-allure
+          pip install selenium webdriver-manager pytest-allure-adaptor pytest-cov bandit safety
           
       - name: Run tests
         run: |
