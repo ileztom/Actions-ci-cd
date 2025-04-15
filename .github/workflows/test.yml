@@ -15,24 +15,23 @@ jobs:
           
       - name: Install Chrome and ChromeDriver
         run: |
+          sudo apt-get remove -y google-chrome-stable chromium-browser
           sudo apt-get update
-          sudo rm -f /usr/bin/google-chrome
-          sudo rm -f /usr/bin/chromedriver
+          sudo apt-get install -y wget gnupg2 unzip
           
-          sudo apt-get install -y wget
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           
           CHROME_VERSION=$(google-chrome-stable --version | awk '{print $3}')
-          CHROME_MAJOR_VERSION=${CHROME_VERSION%.*.*}
-          wget -q https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_MAJOR_VERSION} -O chromedriver-version.txt
-          CHROME_DRIVER_VERSION=$(cat chromedriver-version.txt)
-          wget -q https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSION}/chromedriver_linux64.zip
+          CHROME_MAJOR_VERSION=${CHROME_VERSION%%.*}
+          CHROME_DRIVER_VERSION=$(wget -q -O - "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
+          wget -q "https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip"
           sudo unzip -o chromedriver_linux64.zip -d /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
-          rm chromedriver_linux64.zip chromedriver-version.txt
+          rm chromedriver_linux64.zip
           
           google-chrome-stable --version
           chromedriver --version
@@ -52,3 +51,10 @@ jobs:
           name: allure-results
           path: allure-results/
         if: always()
+
+      - name: Verify Chrome installation
+        run: |
+          if ! google-chrome-stable --version; then
+            echo "::error::Chrome installation failed"
+            exit 1
+          fi
