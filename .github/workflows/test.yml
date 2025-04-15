@@ -13,45 +13,59 @@ jobs:
         with:
           python-version: "3.10"
           
-      - name: Install Google Chrome
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget
+          sudo apt-get install -y wget unzip jq
+        
+      - name: Install Google Chrome
+        run: |
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
-        
-      - name: Get installed Chrome version
+          
+      - name: Get Chrome version
         id: chrome-version
         run: |
           CHROME_VERSION=$(google-chrome-stable --version | awk '{print $3}')
           echo "Chrome version: $CHROME_VERSION"
-          echo "CHROME_VERSION=${CHROME_VERSION}" >> $GITHUB_ENV
-          echo "CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)" >> $GITHUB_ENV
+          echo "CHROME_VERSION=$CHROME_VERSION" >> $GITHUB_ENV
           
-      - name: Install ChromeDriver
+      - name: Install ChromeDriver (new method for Chrome 115+)
+        if: ${{ env.CHROME_VERSION >= '115' }}
         run: |
-          # Для версий Chrome 115 и выше используем новый endpoint
-          if [[ $(echo $CHROME_VERSION | cut -d'.' -f1) -ge 115 ]]; then
-            CHROMEDRIVER_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r '.channels.Stable.version')
-            wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
-            unzip chromedriver-linux64.zip
-            sudo mv chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver /usr/local/bin/chromedriver
-          else
-            # Для старых версий (до 115) используем старый endpoint
-            CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)
-            CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
-            wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
-            unzip chromedriver_linux64.zip
-            sudo mv chromedriver /usr/local/bin/chromedriver
-          fi
+          # Get latest stable ChromeDriver version
+          CHROMEDRIVER_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/latest-patch-versions-per-build.json | jq -r '.builds["'$(echo $CHROME_VERSION | cut -d'.' -f1)'"].version')
+          echo "Installing ChromeDriver version: $CHROMEDRIVER_VERSION"
+          
+          # Download and extract ChromeDriver
+          wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+          unzip chromedriver-linux64.zip -d chromedriver
+          sudo mv chromedriver/chromedriver-linux64/chromedriver /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
-            
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+          
+      - name: Install ChromeDriver (legacy method for Chrome < 115)
+        if: ${{ env.CHROME_VERSION < '115' }}
+        run: |
+          CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)
+          CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
+          echo "Installing ChromeDriver version: $CHROMEDRIVER_VERSION"
+          
+          wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+          unzip chromedriver_linux64.zip
+          sudo mv chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+          
       - name: Verify installations
         run: |
-          google-chrome-stable --version
-          chromedriver --version
+          echo "Chrome version: $(google-chrome-stable --version)"
+          echo "ChromeDriver version: $(chromedriver --version)"
           
       - name: Install Python dependencies
         run: |
