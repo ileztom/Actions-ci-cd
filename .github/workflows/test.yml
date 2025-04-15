@@ -13,15 +13,15 @@ jobs:
         with:
           python-version: "3.10"
           
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip jq
         
       - name: Install Google Chrome
         run: |
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           
@@ -33,34 +33,28 @@ jobs:
           echo "CHROME_VERSION=$CHROME_VERSION" >> $GITHUB_ENV
           echo "CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)" >> $GITHUB_ENV
           
-      - name: Install ChromeDriver (new method)
+      - name: Install ChromeDriver
         run: |
-          # Get the exact ChromeDriver version that matches installed Chrome
           CHROMEDRIVER_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json | \
             jq -r ".milestones.\"${{ env.CHROME_MAJOR_VERSION }}\".version")
           
-          if [ -z "$CHROMEDRIVER_VERSION" ] || [ "$CHROMEDRIVER_VERSION" = "null" ]; then
-            echo "Failed to get ChromeDriver version, falling back to Chrome version"
-            CHROMEDRIVER_VERSION=${{ env.CHROME_VERSION }}
-          fi
+          [ -z "$CHROMEDRIVER_VERSION" ] || [ "$CHROMEDRIVER_VERSION" = "null" ] && CHROMEDRIVER_VERSION=${{ env.CHROME_VERSION }}
           
-          echo "Installing ChromeDriver version: $CHROMEDRIVER_VERSION"
-          
-          # Download and install ChromeDriver
-          wget -q --show-progress "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+          echo "Installing ChromeDriver $CHROMEDRIVER_VERSION"
+          wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
           unzip chromedriver-linux64.zip -d chromedriver
           sudo mv chromedriver/chromedriver-linux64/chromedriver /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
           
       - name: Verify installations
         run: |
-          echo "Chrome version: $(google-chrome-stable --version)"
-          echo "ChromeDriver version: $(chromedriver --version)"
+          google-chrome-stable --version
+          chromedriver --version
           
       - name: Install Python dependencies
         run: |
           pip install -r requirements.txt
-          pip install selenium webdriver-manager pytest-allure-adaptor pytest-cov bandit safety
+          pip install selenium webdriver-manager allure-pytest pytest-cov bandit safety
           
       - name: Run tests
         run: |
