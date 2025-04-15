@@ -13,48 +13,37 @@ jobs:
         with:
           python-version: "3.10"
           
-      - name: Install Chrome and ChromeDriver
+      - name: Install Chrome (FIXED)
         run: |
-          sudo apt-get remove -y google-chrome-stable chromium-browser
+          sudo apt-get remove -y google-chrome-stable chromium-browser 2>/dev/null || true
           sudo apt-get update
-          sudo apt-get install -y wget gnupg2 unzip
+          sudo apt-get install -y wget unzip
           
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get install -yf
+          rm google-chrome-stable_current_amd64.deb
           
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-          
-          CHROME_VERSION=$(google-chrome-stable --version | awk '{print $3}')
-          CHROME_MAJOR_VERSION=${CHROME_VERSION%%.*}
-          CHROME_DRIVER_VERSION=$(wget -q -O - "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
-          wget -q "https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip"
-          sudo unzip -o chromedriver_linux64.zip -d /usr/local/bin/
+          CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
+          CHROME_MAJOR=${CHROME_VERSION%%.*}
+          DRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR")
+          wget "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
+          sudo unzip chromedriver_linux64.zip -d /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
           rm chromedriver_linux64.zip
           
-          google-chrome-stable --version
+          google-chrome --version
           chromedriver --version
           
-      - name: Install Python dependencies
+      - name: Install Python packages
         run: |
           pip install -r requirements.txt
           pip install selenium webdriver-manager pytest-allure
           
       - name: Run tests
-        run: |
-          pytest tests/ --cov=src/ --alluredir=allure-results
+        run: pytest tests/ --cov=src/ --alluredir=allure-results
           
-      - name: Upload test results
+      - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: allure-results/
-        if: always()
-
-      - name: Verify Chrome installation
-        run: |
-          if ! google-chrome-stable --version; then
-            echo "::error::Chrome installation failed"
-            exit 1
-          fi
