@@ -1,0 +1,26 @@
+name: Tests
+
+on: workflow_call
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install -r requirements.txt
+      - run: pytest tests/ --cov=src/ --cov-report=xml
+      - uses: codecov/codecov-action@v3
+      - name: Add test-passed label
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['test-passed']
+            })
