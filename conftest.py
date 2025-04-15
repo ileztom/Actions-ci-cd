@@ -2,6 +2,17 @@ import allure
 import pytest
 import logging
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+
+@pytest.fixture
+def browser():
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    yield driver
+    driver.quit()
 
 
 @pytest.fixture(scope="function")
