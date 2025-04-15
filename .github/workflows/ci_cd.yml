@@ -1,0 +1,23 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  security:
+    needs: test
+    uses: ./.github/workflows/sec.yml
+    secrets: inherit
+
+  deploy:
+    needs: security
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
