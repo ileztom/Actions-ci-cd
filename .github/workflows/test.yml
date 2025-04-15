@@ -13,34 +13,37 @@ jobs:
         with:
           python-version: "3.10"
           
-      - name: Install Chrome (FIXED)
+      - name: Install Chrome and ChromeDriver (FINAL FIX)
         run: |
           sudo apt-get remove -y google-chrome-stable chromium-browser 2>/dev/null || true
-          sudo apt-get update
-          sudo apt-get install -y wget unzip
+          sudo rm -f /usr/bin/google-chrome /usr/bin/chromedriver
           
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get install -yf
+          sudo apt-get update
+          sudo apt-get install -y wget unzip libxss1 libappindicator1 libindicator7 gdebi-core
+          
+          wget -N https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo gdebi -n google-chrome-stable_current_amd64.deb
           rm google-chrome-stable_current_amd64.deb
           
           CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
           CHROME_MAJOR=${CHROME_VERSION%%.*}
           DRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR")
-          wget "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
-          sudo unzip chromedriver_linux64.zip -d /usr/local/bin/
+          wget -N "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
+          sudo unzip -o chromedriver_linux64.zip -d /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
           rm chromedriver_linux64.zip
           
-          google-chrome --version
-          chromedriver --version
+          echo "Chrome $(google-chrome --version)"
+          echo "ChromeDriver $(chromedriver --version)"
           
-      - name: Install Python packages
+      - name: Install Python dependencies
         run: |
           pip install -r requirements.txt
           pip install selenium webdriver-manager pytest-allure
           
       - name: Run tests
-        run: pytest tests/ --cov=src/ --alluredir=allure-results
+        run: |
+          pytest tests/ --cov=src/ --alluredir=allure-results
           
       - name: Upload results
         uses: actions/upload-artifact@v4
